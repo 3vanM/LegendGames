@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cookie Clicker — Enhanced Remix</title>
+<style>
+:root{--bg:#0f1724;--card:#0b1220;--accent:#ffb86b;--muted:#94a3b8;--glass: rgba(255,255,255,0.03);}
+html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;color:#e6eef6;background:linear-gradient(180deg,#071023 0%, #072034 100%);}
+.app{max-width:1100px;margin:28px auto;padding:20px;display:grid;grid-template-columns:420px 1fr;gap:20px}
+.card{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 6px 24px rgba(2,6,23,0.6);}
+.left{display:flex;flex-direction:column;align-items:center;gap:14px}
+.cookie-wrap{position:relative;width:320px;height:320px;display:flex;align-items:center;justify-content:center}
+.cookie{width:240px;height:240px;border-radius:50%;background:radial-gradient(circle at 30% 25%, #ffd29a 0%, #f8b46a 40%, #c97b2d 100%);box-shadow:inset -12px -8px 40px rgba(0,0,0,0.25),0 12px 40px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;transition:transform 120ms cubic-bezier(.2,.9,.2,1);}
+.cookie:active{transform:scale(.96)}
+.choc{position:absolute;filter:drop-shadow(2px 4px 6px rgba(0,0,0,0.45));}
+.score{font-size:20px;color:var(--muted);}
+.big-number{font-weight:700;font-size:34px}
+.stats{display:flex;gap:12px;margin-top:4px}
+.btn{background:var(--glass);border:1px solid rgba(255,255,255,0.04);padding:8px 12px;border-radius:8px;color:#eaf2ff;cursor:pointer;transition:all .2s}
+.btn:hover{background:rgba(255,255,255,0.08)}
+.right .shop{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.upgrade{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:8px;transition:transform .2s;position:relative;}
+.upgrade:hover{transform:scale(1.02);}
+.upgrade h4{margin:0;font-size:16px;position:relative;}
+.upgrade .meta{font-size:13px;color:var(--muted)}
+.upgrade .row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.small{font-size:13px;color:var(--muted)}
+.footer{grid-column:1 / -1;margin-top:14px;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px}
+.pop{position:absolute;pointer-events:none;font-weight:700}
+#achievements{margin-top:14px;display:flex;flex-wrap:wrap;gap:6px}
+.ach{padding:4px 6px;background:#222;border-radius:6px;font-size:12px}
+.prestige{margin-top:12px;text-align:center}
+.tooltip{position:absolute;background:#222;padding:6px 8px;border-radius:6px;font-size:12px;color:#fff;pointer-events:none;opacity:0;transition:opacity .2s;}
+.golden{position:absolute;width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;cursor:pointer;z-index:10;}
+@media (max-width:900px){.app{grid-template-columns:1fr;}.cookie-wrap{width:280px;height:280px}.cookie{width:200px;height:200px}}
+
+@keyframes flashUnlock {
+  0% { transform: scale(1); background: rgba(255, 255, 255, 0.05); }
+  50% { transform: scale(1.05); background: rgba(255, 255, 255, 0.2); }
+  100% { transform: scale(1); background: rgba(255, 255, 255, 0.05); }
+}
+
+.flash-unlock {
+  animation: flashUnlock 0.6s ease;
+}
+
+@keyframes sparkle {
+  0% { opacity: 0; transform: scale(0.5) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.2) rotate(180deg); }
+  100% { opacity: 0; transform: scale(1) rotate(360deg); }
+}
+
+.sparkle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: radial-gradient(circle, #fff 0%, #ff0 50%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: sparkle 0.8s ease forwards;
+  z-index: 10;
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+<div class="card left">
+  <div class="cookie-wrap">
+    <div id="cookie" class="cookie" title="Click me!">🍪</div>
+    <div id="pops"></div>
+  </div>
+  <div style="text-align:center;margin-top:8px">
+    <div class="score">Cookies</div>
+    <div class="big-number" id="cookies">0</div>
+    <div class="stats">
+      <div class="small">CPS: <span id="cps">0</span></div>
+      <div class="small">Per Click: <span id="perClick">1</span></div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+      <button class="btn" id="saveBtn">Save</button>
+      <button class="btn" id="resetBtn">Reset</button>
+    </div>
+    <div class="prestige">
+      <button class="btn" id="prestigeBtn">Prestige / Rebirth</button>
+      <div id="prestigeInfo" class="small">Prestige level: 0 (x1.0 multiplier)</div>
+    </div>
+  </div>
+</div>
+
+<div class="card right">
+  <h3 style="margin-top:0">Shop / Upgrades</h3>
+  <div class="shop" id="shop"></div>
+  <div id="achievements"><strong>Achievements:</strong></div>
+  <div class="footer">
+    <div>Tip: Press <kbd>Space</kbd> to click, <kbd>R</kbd> to reset, <kbd>1-7</kbd> to buy items</div>
+    <div id="lastSaved">Never saved</div>
+  </div>
+</div>
+</div>
+
+<div id="tooltip" class="tooltip"></div>
+
+<script>
+// --- Game state ---
+const state = {
+  cookies: 0,
+  perClick: 1,
+  cps: 0,
+  prestige: 0,
+  frenzy: false,
+  frenzyTimer: 0,
+  items: {
+    cursor: {name:'🖱️ Cursor', baseCost:15, qty:0, cps:0, clickBonus:1, unlockAfter:null},
+    grandma: {name:'👵 Grandma', baseCost:100, qty:0, cps:1.25, unlockAfter:'cursor'},
+    farm: {name:'🌾 Farm', baseCost:1100, qty:0, cps:8, unlockAfter:'grandma'},
+    factory: {name:'🏭 Factory', baseCost:12000, qty:0, cps:47, unlockAfter:'farm'},
+    mine: {name:'⛏️ Mine', baseCost:130000, qty:0, cps:260, unlockAfter:'factory'},
+    bank: {name:'🏦 Bank', baseCost:1400000, qty:0, cps:1400, unlockAfter:'mine'},
+    temple: {name:'⛪ Temple', baseCost:20000000, qty:0, cps:7800, unlockAfter:'bank'},
+    multiplier: {name:'✨ Multiplier', baseCost:200, qty:0, multiplier:1.15, type:'mult', unlockAfter:'cursor'},
+    
+    // Progressive new items
+    dragon: {name:'🐉 Dragon', baseCost:2.5e7, qty:0, cps:10000, unlockAfter:'temple'},
+    spaceship: {name:'🚀 Spaceship', baseCost:5e7, qty:0, cps:25000, unlockAfter:'dragon'},
+    robot: {name:'🤖 Robot', baseCost:1e8, qty:0, cps:50000, unlockAfter:'spaceship'},
+    wizard: {name:'🧙 Wizard', baseCost:2.5e8, qty:0, cps:120000, unlockAfter:'robot'},
+    volcano: {name:'🌋 Volcano', baseCost:5e8, qty:0, cps:250000, unlockAfter:'wizard'},
+    meteor: {name:'☄️ Meteor', baseCost:1e9, qty:0, cps:500000, unlockAfter:'volcano'},
+    comet: {name:'🌠 Comet', baseCost:2e9, qty:0, cps:1200000, unlockAfter:'meteor'},
+    blackhole: {name:'🕳️ Blackhole', baseCost:5e9, qty:0, cps:3000000, unlockAfter:'comet'},
+    unicorn: {name:'🦄 Unicorn', baseCost:1e10, qty:0, cps:7000000, unlockAfter:'blackhole'},
+    phoenix: {name:'🔥 Phoenix', baseCost:2e10, qty:0, cps:15000000, unlockAfter:'unicorn'},
+    genie: {name:'🧞 Genie', baseCost:4e10, qty:0, cps:30000000, unlockAfter:'phoenix'},
+    castle: {name:'🏰 Castle', baseCost:8e10, qty:0, cps:70000000, unlockAfter:'genie'},
+    spaceship2: {name:'🛸 UFO', baseCost:1.5e11, qty:0, cps:1.5e8, unlockAfter:'castle'},
+    moonbase: {name:'🌕 Moonbase', baseCost:3e11, qty:0, cps:3e8, unlockAfter:'spaceship2'},
+    sun: {name:'☀️ Sun', baseCost:6e11, qty:0, cps:7e8, unlockAfter:'moonbase'},
+    galaxy: {name:'🌌 Galaxy', baseCost:1.2e12, qty:0, cps:1.5e9, unlockAfter:'sun'},
+    planet: {name:'🪐 Planet', baseCost:2.5e12, qty:0, cps:3.5e9, unlockAfter:'galaxy'},
+    asteroid: {name:'🪨 Asteroid', baseCost:5e12, qty:0, cps:7.5e9, unlockAfter:'planet'},
+    alien: {name:'👽 Alien', baseCost:1e13, qty:0, cps:1.5e10, unlockAfter:'asteroid'},
+    wormhole: {name:'🌀 Wormhole', baseCost:2e13, qty:0, cps:3e10, unlockAfter:'alien'},
+    satellite: {name:'🛰️ Satellite', baseCost:4e13, qty:0, cps:6.5e10, unlockAfter:'wormhole'},
+    telescope: {name:'🔭 Telescope', baseCost:8e13, qty:0, cps:1.2e11, unlockAfter:'satellite'},
+    asteroid_mine: {name:'⛏️ Asteroid Mine', baseCost:1.5e14, qty:0, cps:2.5e11, unlockAfter:'telescope'},
+    blackhole_factory: {name:'🏭 Blackhole Factory', baseCost:3e14, qty:0, cps:5e11, unlockAfter:'asteroid_mine'},
+    magic_library: {name:'📚 Magic Library', baseCost:6e14, qty:0, cps:1e12, unlockAfter:'blackhole_factory'},
+    crystal_mine: {name:'💎 Crystal Mine', baseCost:1.2e15, qty:0, cps:2.2e12, unlockAfter:'magic_library'},
+    dragon_hatchery: {name:'🐲 Dragon Hatchery', baseCost:2.5e15, qty:0, cps:5e12, unlockAfter:'crystal_mine'},
+    potion_lab: {name:'🧪 Potion Lab', baseCost:5e15, qty:0, cps:1e13, unlockAfter:'dragon_hatchery'},
+    alchemy_tower: {name:'🏯 Alchemy Tower', baseCost:1e16, qty:0, cps:2.2e13, unlockAfter:'potion_lab'},
+    moon_crystal: {name:'🌙 Moon Crystal', baseCost:2e16, qty:0, cps:5e13, unlockAfter:'alchemy_tower'},
+    sun_shard: {name:'☀️ Sun Shard', baseCost:4e16, qty:0, cps:1e14, unlockAfter:'moon_crystal'},
+    starforge: {name:'⭐ Starforge', baseCost:8e16, qty:0, cps:2.2e14, unlockAfter:'sun_shard'},
+    galaxy_hub: {name:'🌌 Galaxy Hub', baseCost:1.5e17, qty:0, cps:5e14, unlockAfter:'starforge'},
+    nebula: {name:'☁️ Nebula', baseCost:3e17, qty:0, cps:1.2e15, unlockAfter:'galaxy_hub'},
+    quantum_lab: {name:'🧬 Quantum Lab', baseCost:6e17, qty:0, cps:2.5e15, unlockAfter:'nebula'},
+    cosmic_forge: {name:'⚡ Cosmic Forge', baseCost:1.2e18, qty:0, cps:5e15, unlockAfter:'quantum_lab'},
+    warp_gate: {name:'🚪 Warp Gate', baseCost:2.5e18, qty:0, cps:1e16, unlockAfter:'cosmic_forge'},
+    time_machine: {name:'⏳ Time Machine', baseCost:5e18, qty:0, cps:2.2e16, unlockAfter:'warp_gate'},
+    dimensional_portal: {name:'🌀 Dimensional Portal', baseCost:1e19, qty:0, cps:5e16, unlockAfter:'time_machine'},
+    void_reactor: {name:'⚫ Void Reactor', baseCost:2e19, qty:0, cps:1.2e17, unlockAfter:'dimensional_portal'},
+    infinity_engine: {name:'♾️ Infinity Engine', baseCost:4e19, qty:0, cps:2.5e17, unlockAfter:'void_reactor'},
+    cosmic_library: {name:'📖 Cosmic Library', baseCost:8e19, qty:0, cps:5e17, unlockAfter:'infinity_engine'},
+    blackhole_generator: {name:'🕳️ Blackhole Generator', baseCost:1.5e20, qty:0, cps:1.2e18, unlockAfter:'cosmic_library'},
+    mega_factory: {name:'🏭 Mega Factory', baseCost:3e20, qty:0, cps:2.5e18, unlockAfter:'blackhole_generator'},
+    ancient_temple: {name:'⛩️ Ancient Temple', baseCost:6e20, qty:0, cps:5e18, unlockAfter:'mega_factory'},
+    cosmic_orb: {name:'🔮 Cosmic Orb', baseCost:1.2e21, qty:0, cps:1.2e19, unlockAfter:'ancient_temple'},
+    alien_artifact: {name:'🛸 Alien Artifact', baseCost:2.5e21, qty:0, cps:2.5e19, unlockAfter:'cosmic_orb'},
+    ultimate_wand: {name:'✨ Ultimate Wand', baseCost:5e21, qty:0, cps:5e19, unlockAfter:'alien_artifact'},
+    legendary_dragon: {name:'🐉 Legendary Dragon', baseCost:1e22, qty:0, cps:1.2e20, unlockAfter:'ultimate_wand'},
+    galactic_empire: {name:'🏰 Galactic Empire', baseCost:2e22, qty:0, cps:2.5e20, unlockAfter:'legendary_dragon'},
+    cosmic_heart: {name:'❤️ Cosmic Heart', baseCost:4e22, qty:0, cps:5e20, unlockAfter:'galactic_empire'},
+    infinity_core: {name:'💠 Infinity Core', baseCost:8e22, qty:0, cps:1.2e21, unlockAfter:'cosmic_heart'},
+    ultimate_machine: {name:'🤖 Ultimate Machine', baseCost:1.5e23, qty:0, cps:2.5e21, unlockAfter:'infinity_core'},
+    omniverse: {name:'🌌 Omniverse', baseCost:3e23, qty:0, cps:5e21, unlockAfter:'ultimate_machine'},
+    eternal_light: {name:'🌟 Eternal Light', baseCost:6e23, qty:0, cps:1.2e22, unlockAfter:'omniverse'}
+  },
+  lastSaved: null,
+  achievements: new Set()
+};
+
+
+
+// --- Sounds ---
+const sounds = {
+  click:new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg'),
+  buy:new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg'),
+  achieve:new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg'),
+  golden:new Audio('https://actions.google.com/sounds/v1/cartoon/clang.ogg')
+}
+
+const $=id=>document.getElementById(id)
+const fmt=n=>{
+  if(n>=1e12)return(n/1e12).toFixed(2)+'T'
+  if(n>=1e9)return(n/1e9).toFixed(2)+'B'
+  if(n>=1e6)return(n/1e6).toFixed(2)+'M'
+  if(n>=1e3)return(n/1e3).toFixed(1)+'k'
+  return Math.floor(n)
+}
+
+function costFor(item){return Math.floor(item.baseCost*Math.pow(1.15,item.qty))}
+
+function recalc(){
+  let click=1, cps=0
+  let mult=Math.pow(1.15,state.items.multiplier.qty)
+  mult*=(1+state.prestige*0.5)
+  if(state.frenzy) mult*=2
+  for(const key in state.items){
+    const it=state.items[key]
+    if(it.qty<=0||it.type==='mult') continue
+    click+=(it.clickBonus||0)*it.qty
+    cps+=(it.cps||0)*it.qty
+  }
+  state.perClick=click*mult
+  state.cps=cps*mult
+}
+
+function renderShop(){
+  const shop=$('shop'); shop.innerHTML=''
+  const keys=Object.keys(state.items)
+  keys.forEach((key,i)=>{
+    const it=state.items[key], cost=costFor(it)
+    const div=document.createElement('div'); div.className='upgrade'
+    div.innerHTML=`<div class="row"><h4>${it.name}</h4><div class="small">${fmt(cost)}</div></div>
+    <div class="meta">Owned: <strong>${it.qty}</strong></div>
+    <div class="row"><div class="small">${it.cps?it.cps+' cps':(it.clickBonus?it.clickBonus+'/click':(it.type==='mult'?'x'+it.multiplier:'-'))}</div>
+    <button class="btn buy" data-key="${key}" title="Shortcut: ${i+1}">Buy</button></div>`
+    div.addEventListener('mouseenter',()=>showTooltip(div,it,cost))
+    div.addEventListener('mouseleave',()=>hideTooltip())
+    shop.appendChild(div)
+  })
+  document.querySelectorAll('.buy').forEach(btn=>btn.addEventListener('click',()=>buyItem(btn.dataset.key)))
+}
+
+function showTooltip(div,it,cost){
+  const tip=$('tooltip'); tip.style.opacity=1
+  tip.textContent=`Cost: ${fmt(cost)} | CPS: ${it.cps||0} | Click Bonus: ${it.clickBonus||0}`
+  const rect=div.getBoundingClientRect()
+  tip.style.left=rect.left+'px'; tip.style.top=(rect.top-28)+'px'
+}
+function hideTooltip(){const tip=$('tooltip'); tip.style.opacity=0}
+
+function updateUI(){
+  $('cookies').textContent=fmt(state.cookies)
+  $('cps').textContent=state.cps.toFixed(2)
+  $('perClick').textContent=state.perClick.toFixed(1)
+  $('lastSaved').textContent=state.lastSaved?'Saved: '+new Date(state.lastSaved).toLocaleTimeString():'Never saved'
+  $('prestigeInfo').textContent=`Prestige level: ${state.prestige} (x${(1+state.prestige*0.5).toFixed(1)} multiplier)`
+  renderShop()
+}
+
+function buyItem(key){
+  const it=state.items[key], cost=costFor(it)
+  if(state.cookies>=cost){
+    state.cookies-=cost; it.qty++
+    recalc(); updateUI(); sounds.buy.play()
+    popClick('Bought '+it.name)
+  } else flash(shopNotice(`Need ${fmt(cost)}`))
+}
+
+// --- Clicking ---
+$('cookie').addEventListener('click',()=>{
+  state.cookies+=state.perClick
+  popClick('+ '+state.perClick.toFixed(1))
+  sounds.click.play(); recalc(); updateUI(); checkAchievements()
+})
+
+// --- Keyboard ---
+window.addEventListener('keydown', e=>{
+  if(e.code==='Space'){e.preventDefault(); $('cookie').click()}
+  if(e.key.toLowerCase()==='r'){if(confirm('Reset game?')) hardReset()}
+  if('1234567'.includes(e.key)){const key=Object.keys(state.items)[parseInt(e.key)-1]; buyItem(key)}
+})
+
+// --- Auto CPS ---
+let tickCount=0
+setInterval(()=>{
+  if(state.cps>0) state.cookies+=state.cps/10
+  if(++tickCount%10===0) updateUI(), checkAchievements()
+  if(state.frenzy){ state.frenzyTimer-=0.1; if(state.frenzyTimer<=0) { state.frenzy=false; recalc(); updateUI() } }
+},100)
+
+// --- Save/Load ---
+function save(){localStorage.setItem('cookie-game',JSON.stringify({...state,achievements:[...state.achievements]})); state.lastSaved=Date.now(); updateUI()}
+function load(){
+  const raw=localStorage.getItem('cookie-game'); if(!raw) return
+  try{
+    const parsed=JSON.parse(raw)
+    Object.assign(state,parsed)
+    state.achievements=new Set(parsed.achievements||[])
+    recalc()
+  }catch(e){console.warn('Failed loading',e)}
+}
+$('saveBtn').addEventListener('click',save)
+$('resetBtn').addEventListener('click',()=>{if(confirm('Reset?')) hardReset()})
+
+// --- Prestige ---
+$('prestigeBtn').addEventListener('click',()=>{
+  if(state.cookies>=100000){
+    state.cookies=0; for(const k in state.items) state.items[k].qty=0
+    state.prestige++; recalc(); updateUI(); sounds.achieve.play()
+    popClick('Prestiged! x'+(1+state.prestige*0.5))
+  } else alert('Need 100k cookies to Prestige!')
+})
+
+// --- Pop Animation ---
+function popClick(text){
+  const el=document.createElement('div'); el.className='pop'; el.textContent=text
+  el.style.left='50%'; el.style.top='40%'; document.querySelector('.cookie-wrap').appendChild(el)
+  el.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-40px)'}],{duration:700})
+  setTimeout(()=>el.remove(),750)
+}
+
+// --- Shop Flash ---
+function shopNotice(txt){const el=document.createElement('div'); el.textContent=txt; el.style.position='fixed';el.style.right='14px';el.style.top='14px'; el.style.background='rgba(0,0,0,0.6)';el.style.padding='8px 10px';el.style.borderRadius='8px';el.style.color='#fff';document.body.appendChild(el); setTimeout(()=>el.remove(),1600)}
+function flash(fn){fn()}
+
+// --- Achievements ---
+function checkAchievements(){
+  const milestones=[1,100,1000,10000,100000,1000000]
+  milestones.forEach(m=>{
+    if(state.cookies>=m&&!state.achievements.has(m)){
+      state.achievements.add(m)
+      const badge=document.createElement('div'); badge.className='ach'; badge.textContent=`🏆 ${fmt(m)} cookies!`
+      $('achievements').appendChild(badge); sounds.achieve.play()
+    }
+  })
+  // Item milestones
+  Object.values(state.items).forEach(it=>{
+    if(it.qty>=10&&!state.achievements.has(it.name+'10')){
+      state.achievements.add(it.name+'10')
+      const badge=document.createElement('div'); badge.className='ach'; badge.textContent=`🏅 10 ${it.name}!`
+      $('achievements').appendChild(badge); sounds.achieve.play()
+    }
+  })
+}
+
+// --- Hard Reset ---
+function hardReset(){localStorage.removeItem('cookie-game'); location.reload()}
+
+// --- Golden Cookies ---
+function spawnGoldenCookie(){
+  const gc=document.createElement('div'); gc.className='golden'; gc.textContent='🌟'
+  gc.style.left=Math.random()*240+'px'; gc.style.top=Math.random()*240+'px'
+  document.querySelector('.cookie-wrap').appendChild(gc)
+  gc.addEventListener('click',()=>{
+    state.cookies+=Math.floor(state.perClick*10); popClick('+ '+Math.floor(state.perClick*10)+' 🍪'); sounds.golden.play()
+    state.frenzy=true; state.frenzyTimer=10; recalc(); updateUI(); gc.remove()
+  })
+  setTimeout(()=>gc.remove(),8000)
+}
+setInterval(()=>{if(Math.random()<0.02) spawnGoldenCookie()},1000)
+
+// --- Init ---
+load(); recalc(); updateUI(); setInterval(save,5000)
+
+// --- Random Seasonal / Event System ---
+const events = [
+  {name:'Lucky Day', type:'cps', multiplier:2, duration:15},  // x2 CPS
+  {name:'Click Frenzy', type:'click', multiplier:5, duration:10}, // x5 click
+  {name:'Golden Boost', type:'both', multiplier:3, duration:12}  // x3 both
+];
+
+function startRandomEvent() {
+  const event = events[Math.floor(Math.random()*events.length)];
+  popClick(`🎉 ${event.name} started!`);
+  let originalPerClick = state.perClick;
+  let originalCPS = state.cps;
+
+  if(event.type==='cps') state.cps *= event.multiplier;
+  if(event.type==='click') state.perClick *= event.multiplier;
+  if(event.type==='both'){ state.cps *= event.multiplier; state.perClick *= event.multiplier; }
+  updateUI();
+
+  // End event after duration
+  setTimeout(()=>{
+    if(event.type==='cps') state.cps = originalCPS;
+    if(event.type==='click') state.perClick = originalPerClick;
+    if(event.type==='both'){ state.cps = originalCPS; state.perClick = originalPerClick; }
+    updateUI();
+    popClick(`✨ ${event.name} ended!`);
+  }, event.duration*1000);
+}
+
+// Trigger a random event every 30–60s
+setInterval(()=>{
+  if(Math.random()<0.3) startRandomEvent(); // 30% chance each interval
+}, 30000);
+
+// --- Secret Cheat Code ---
+const cheatCode = 'INFINITECOOKIES'; // The code to type
+let typedCode = '';
+
+window.addEventListener('keydown', e => {
+  // Only letters
+  if(e.key.length === 1) typedCode += e.key.toUpperCase();
+
+  // Keep the string length same as code
+  if(typedCode.length > cheatCode.length) typedCode = typedCode.slice(-cheatCode.length);
+
+  // Check if cheat code is complete
+  if(typedCode === cheatCode){
+    state.cookies += 1e1558943856430687045837658043765904708654785460327014537201540356043712904570217517230; // Gives a huge number of cookies
+    recalc();
+    updateUI();
+    popClick('🍪 INFINITE COOKIES UNLOCKED!');
+    sounds.achieve.play();
+    typedCode = ''; // Reset code entry
+  }
+});
+
+function renderShop(){
+  const shop = $('shop');
+  shop.innerHTML = '';
+
+  for (const key of Object.keys(state.items)){
+    const it = state.items[key];
+    const cost = costFor(it);
+
+    // Determine if item is unlocked
+    const unlocked = !it.unlockAfter || state.items[it.unlockAfter].qty > 0;
+
+    const div = document.createElement('div');
+    div.className = 'upgrade';
+    div.style.opacity = unlocked ? '1' : '0.4'; // fade locked items
+
+    div.innerHTML = `
+      <div class="row">
+        <h4>${it.name}</h4>
+        <div class="small">${fmt(cost)}</div>
+      </div>
+      <div class="meta">Owned: <strong>${it.qty}</strong></div>
+      <div class="row">
+        <div class="small">${it.cps ? it.cps+ ' cps' : (it.clickBonus? it.clickBonus + ' /click' : (it.type==='mult' ? 'x' + it.multiplier : '-'))}</div>
+        <button class="btn buy" data-key="${key}" ${unlocked ? '' : 'disabled'}>${unlocked ? 'Buy' : 'Locked'}</button>
+      </div>
+    `;
+    shop.appendChild(div);
+  }
+
+  // Add event listeners for buy buttons
+  document.querySelectorAll('.buy').forEach(btn=>{
+    btn.addEventListener('click', ()=>buyItem(btn.dataset.key));
+  });
+}
+
+load();
+recalc();
+updateUI();   // <- this calls renderShop()
+
+function updateUI(){
+  $('cookies').textContent = fmt(state.cookies)
+  $('cps').textContent = state.cps.toFixed(2)
+  $('perClick').textContent = state.perClick.toFixed(1)
+  $('lastSaved').textContent = state.lastSaved ? 'Saved: ' + new Date(state.lastSaved).toLocaleTimeString() : 'Never saved'
+  $('prestigeInfo').textContent = `Prestige level: ${state.prestige} (x${(1+state.prestige*0.5).toFixed(1)} multiplier)`
+  renderShop();  // <- MUST be here
+}
+
+function renderShop() {
+  const shop = $('shop');
+  shop.innerHTML = '';
+
+  for (const key of Object.keys(state.items)) {
+    const it = state.items[key];
+    const cost = costFor(it);
+
+    // Determine if item is unlocked
+    const unlocked = !it.unlockAfter || state.items[it.unlockAfter].qty > 0;
+
+    const div = document.createElement('div');
+    div.className = 'upgrade';
+    div.style.opacity = unlocked ? '1' : '0.4'; // fade locked items
+
+    // Tooltip for locked items
+    const tooltip = !unlocked ? `Unlock by buying ${state.items[it.unlockAfter].name}` : '';
+
+    div.innerHTML = `
+      <div class="row" title="${tooltip}">
+        <h4>${it.name}</h4>
+        <div class="small">${fmt(cost)}</div>
+      </div>
+      <div class="meta">Owned: <strong>${it.qty}</strong></div>
+      <div class="row">
+        <div class="small">${it.cps ? it.cps + ' cps' : (it.clickBonus ? it.clickBonus + ' /click' : (it.type === 'mult' ? 'x' + it.multiplier : '-'))}</div>
+        <button class="btn buy" data-key="${key}" ${unlocked ? '' : 'disabled'}>
+          ${unlocked ? 'Buy' : 'Locked'}
+        </button>
+      </div>
+    `;
+
+    shop.appendChild(div);
+  }
+
+  // Add event listeners for buy buttons
+  document.querySelectorAll('.buy').forEach(btn => {
+    btn.addEventListener('click', () => buyItem(btn.dataset.key));
+  });
+}
+
+function renderShop() {
+  const shop = $('shop');
+  shop.innerHTML = '';
+
+  for (const key of Object.keys(state.items)) {
+    const it = state.items[key];
+    const cost = costFor(it);
+    const unlocked = !it.unlockAfter || state.items[it.unlockAfter].qty > 0;
+
+    const div = document.createElement('div');
+    div.className = 'upgrade';
+    div.style.opacity = unlocked ? '1' : '0.4';
+
+    // Tooltip for locked items
+    const tooltip = !unlocked ? `Unlock by buying ${state.items[it.unlockAfter].name}` : '';
+
+    div.innerHTML = `
+      <div class="row" title="${tooltip}">
+        <h4>${it.name}</h4>
+        <div class="small">${fmt(cost)}</div>
+      </div>
+      <div class="meta">Owned: <strong>${it.qty}</strong></div>
+      <div class="row">
+        <div class="small">${it.cps ? it.cps + ' cps' : (it.clickBonus ? it.clickBonus + ' /click' : (it.type === 'mult' ? 'x' + it.multiplier : '-'))}</div>
+        <button class="btn buy" data-key="${key}" ${unlocked ? '' : 'disabled'}>
+          ${unlocked ? 'Buy' : 'Locked'}
+        </button>
+      </div>
+    `;
+
+    // Animate newly unlocked items
+    if (unlocked && !it._hasShown) {
+      div.classList.add('flash-unlock');
+      it._hasShown = true; // mark as already shown
+    }
+
+    shop.appendChild(div);
+  }
+
+  document.querySelectorAll('.buy').forEach(btn => {
+    btn.addEventListener('click', () => buyItem(btn.dataset.key));
+  });
+}
+
+sounds.unlock = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
+
+if (unlocked && !it._hasShown) {
+  div.classList.add('flash-unlock');
+  sounds.unlock.play();   // Play unlock sound
+  it._hasShown = true;    // Mark as already shown
+}
+
+function showUnlockPopup(itemName) {
+  const el = document.createElement('div');
+  el.textContent = `🎉 New item unlocked: ${itemName}!`;
+  el.style.position = 'fixed';
+  el.style.top = '14px';
+  el.style.right = '14px';
+  el.style.background = 'rgba(0,0,0,0.7)';
+  el.style.color = '#fff';
+  el.style.padding = '10px 14px';
+  el.style.borderRadius = '8px';
+  el.style.fontWeight = '700';
+  el.style.zIndex = '999';
+  el.style.opacity = '0';
+  el.style.transition = 'opacity 0.3s';
+
+  document.body.appendChild(el);
+
+  // Fade in
+  setTimeout(() => el.style.opacity = '1', 50);
+
+  // Fade out & remove after 2s
+  setTimeout(() => {
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 500);
+  }, 2000);
+}
+
+
+if (unlocked && !it._hasShown) {
+  div.classList.add('flash-unlock');
+  sounds.unlock.play();
+  showUnlockPopup(it.name);  // Show popup
+  it._hasShown = true;
+}
+
+function showUnlockPopupNearShop(itemName) {
+  const shopEl = $('shop');
+  const rect = shopEl.getBoundingClientRect(); // get shop position
+
+  const el = document.createElement('div');
+  el.textContent = `🎉 New item unlocked: ${itemName}!`;
+  el.style.position = 'absolute';
+  el.style.left = rect.left + window.scrollX + 'px';
+  el.style.top = rect.top + window.scrollY - 40 + 'px'; // just above shop
+  el.style.background = 'rgba(0,0,0,0.7)';
+  el.style.color = '#fff';
+  el.style.padding = '10px 14px';
+  el.style.borderRadius = '8px';
+  el.style.fontWeight = '700';
+  el.style.zIndex = '999';
+  el.style.opacity = '0';
+  el.style.transition = 'opacity 0.3s, transform 0.3s';
+  el.style.transform = 'translateY(0px)';
+
+  document.body.appendChild(el);
+
+  // Animate fade in and move slightly up
+  setTimeout(() => {
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(-10px)';
+  }, 50);
+
+  // Fade out & remove after 2s
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-20px)';
+    setTimeout(() => el.remove(), 500);
+  }, 2000);
+}
+if (unlocked && !it._hasShown) {
+  div.classList.add('flash-unlock');
+  sounds.unlock.play();
+  showUnlockPopupNearShop(it.name);  // popup near shop
+  it._hasShown = true;
+}
+function showUnlockPopupFromItem(itemKey) {
+  const shopEl = $('shop');
+  const itemDiv = [...shopEl.children].find(div => div.querySelector('.buy')?.dataset.key === itemKey);
+  if (!itemDiv) return;
+
+  const rect = itemDiv.getBoundingClientRect();
+
+  const el = document.createElement('div');
+  el.textContent = `🎉 New item unlocked: ${state.items[itemKey].name}!`;
+  el.style.position = 'absolute';
+  el.style.left = rect.left + window.scrollX + rect.width / 2 + 'px';
+  el.style.top = rect.top + window.scrollY - 30 + 'px';
+  el.style.background = 'rgba(0,0,0,0.8)';
+  el.style.color = '#fff';
+  el.style.padding = '8px 12px';
+  el.style.borderRadius = '8px';
+  el.style.fontWeight = '700';
+  el.style.zIndex = '999';
+  el.style.opacity = '0';
+  el.style.transform = 'translate(-50%, 0px) scale(0.8)';
+  el.style.transition = 'opacity 0.3s, transform 0.3s';
+
+  document.body.appendChild(el);
+
+  // Animate bounce + fade in
+  setTimeout(() => {
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%, -20px) scale(1.05)';
+  }, 50);
+
+  // Bounce back slightly and fade out
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translate(-50%, -40px) scale(1)';
+    setTimeout(() => el.remove(), 500);
+  }, 2000);
+}
+if (unlocked && !it._hasShown) {
+  div.classList.add('flash-unlock');
+  sounds.unlock.play();
+  showUnlockPopupFromItem(key);  // popup bounces from item
+  it._hasShown = true;
+}
+
+function sparkleItem(itemKey) {
+  const shopEl = $('shop');
+  const itemDiv = [...shopEl.children].find(div => div.querySelector('.buy')?.dataset.key === itemKey);
+  if (!itemDiv) return;
+
+  for (let i = 0; i < 5; i++) { // create multiple sparkles
+    const sparkle = document.createElement('div');
+    sparkle.className = 'sparkle';
+    sparkle.style.left = (Math.random() * itemDiv.offsetWidth) + 'px';
+    sparkle.style.top = (Math.random() * itemDiv.offsetHeight) + 'px';
+    itemDiv.appendChild(sparkle);
+
+    setTimeout(() => sparkle.remove(), 800);
+  }
+}
+if (unlocked && !it._hasShown) {
+  div.classList.add('flash-unlock');
+  sounds.unlock.play();
+  showUnlockPopupFromItem(key);  // popup bounces from item
+  sparkleItem(key);               // sparkle effect on item
+  it._hasShown = true;
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+/* Reset & Fonts */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  background-color: #0f0f1d;
+  color: #fff;
+  line-height: 1.6;
+}
+
+/* Header */
+header {
+  position: relative;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+canvas#stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+header .container {
+  position: relative;
+  z-index: 2;
+}
+
+header h1 {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
+header p {
+  font-size: 1.2rem;
+  margin-bottom: 30px;
+}
+
+header .btn {
+  position: relative;
+  background: #fff;
+  color: #ff6ec4;
+  padding: 12px 25px;
+  border-radius: 30px;
+  font-weight: bold;
+  text-decoration: none;
+  transition: 0.3s;
+  overflow: hidden;
+}
+
+header .btn:hover {
+  background: #f0f0f0;
+}
+
+/* Particle effect on button */
+header .btn::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0; left: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+  transform: scale(0);
+  transition: transform 0.5s;
+  border-radius: 30px;
+}
+
+header .btn:hover::after {
+  transform: scale(2);
+}
+
+/* Floating Icons */
+.floating-icons {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.floating-icons .icon {
+  position: absolute;
+  font-size: 2rem;
+  animation: float 6s infinite ease-in-out;
+}
+
+.floating-icons .icon:nth-child(1) { top: 10%; left: 20%; animation-delay: 0s; }
+.floating-icons .icon:nth-child(2) { top: 30%; left: 70%; animation-delay: 2s; }
+.floating-icons .icon:nth-child(3) { top: 60%; left: 40%; animation-delay: 4s; }
+.floating-icons .icon:nth-child(4) { top: 80%; left: 80%; animation-delay: 1s; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+/* Games Section */
+section {
+  padding: 80px 20px;
+}
+
+section h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  color: #ff6ec4;
+  margin-bottom: 40px;
+}
+
+/* Carousel */
+.carousel-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  gap: 20px;
+  padding-bottom: 20px;
+}
+
+.carousel::-webkit-scrollbar {
+  height: 8px;
+}
+
+.carousel::-webkit-scrollbar-thumb {
+  background: #ff6ec4;
+  border-radius: 10px;
+}
+
+.carousel::-webkit-scrollbar-track {
+  background: #222;
+}
+
+.arrow {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #ff6ec4;
+  font-size: 2rem;
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 50%;
+  margin: 0 10px;
+  transition: 0.3s;
+}
+
+.arrow:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+/* Game Cards */
+.game-card {
+  background: linear-gradient(135deg, #7873f5, #4facfe);
+  padding: 20px;
+  border-radius: 15px;
+  min-width: 250px;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  transition: transform 0.3s, box-shadow 0.3s, filter 0.3s;
+  cursor: pointer;
+}
+
+.game-card:hover {
+  transform: scale(1.1);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+  filter: brightness(1.2);
+}
+
+.game-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+}
+
+.game-card h3 {
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+}
+
+.play-btn {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 10px 20px;
+  background: #fff;
+  color: #4facfe;
+  border-radius: 30px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.play-btn::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0; left: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+  transform: scale(0);
+  transition: transform 0.5s;
+  border-radius: 30px;
+}
+
+.play-btn:hover::after {
+  transform: scale(2);
+}
+
+.play-btn:hover {
+  background: #f0f0f0;
+}
+
+/* Coming Soon Section */
+#coming-soon {
+  background: #111;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+#coming-soon h2 {
+  color: #ff6ec4;
+  font-size: 2rem;
+  margin-bottom: 20px;
+}
+
+/* Footer */
+footer {
+  background: #222;
+  text-align: center;
+  padding: 20px 0;
+  font-size: 0.9rem;
+  color: #aaa;
+}
