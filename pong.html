@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pong Game</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #111, #222);
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      background: #000;
+      border: 3px solid #0f0;
+      box-shadow: 0 0 15px #0f0;
+      display: none;
+    }
+    #overlay {
+      position: absolute;
+      text-align: center;
+      color: white;
+    }
+    h1 {
+      font-size: 40px;
+      margin-bottom: 10px;
+      color: lime;
+    }
+    p {
+      font-size: 16px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background: limegreen;
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: green;
+    }
+    select {
+      margin-top: 10px;
+      padding: 5px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="pong" width="800" height="500"></canvas>
+  <div id="overlay">
+    <h1>Pong 🏓</h1>
+    <p>Choose difficulty:</p>
+    <select id="difficulty">
+      <option value="0.04">Easy</option>
+      <option value="0.07" selected>Normal</option>
+      <option value="0.1">Hard</option>
+      <option value="0.15">Insane</option>
+    </select>
+    <br>
+    <button onclick="startGame()">Start Game</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("pong");
+    const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
+    const difficultySelect = document.getElementById("difficulty");
+
+    // Ball
+    const ball = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      radius: 10,
+      speed: 5,
+      dx: 5,
+      dy: 5,
+      color: "white"
+    };
+
+    // Paddle settings
+    const paddleWidth = 10, paddleHeight = 100;
+
+    const user = {
+      x: 0,
+      y: canvas.height / 2 - paddleHeight / 2,
+      width: paddleWidth,
+      height: paddleHeight,
+      color: "lime",
+      score: 0
+    };
+
+    const computer = {
+      x: canvas.width - paddleWidth,
+      y: canvas.height / 2 - paddleHeight / 2,
+      width: paddleWidth,
+      height: paddleHeight,
+      color: "red",
+      score: 0
+    };
+
+    let aiLevel = 0.07; // default difficulty
+    let gameInterval;
+
+    // Draw rectangle
+    function drawRect(x, y, w, h, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, w, h);
+    }
+
+    // Draw circle
+    function drawCircle(x, y, r, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2, false);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Draw text
+    function drawText(text, x, y, color) {
+      ctx.fillStyle = color;
+      ctx.font = "40px Arial";
+      ctx.fillText(text, x, y);
+    }
+
+    // Reset ball
+    function resetBall() {
+      ball.x = canvas.width / 2;
+      ball.y = canvas.height / 2;
+      ball.dx = -ball.dx;
+      ball.speed = 5;
+    }
+
+    // Draw net
+    function drawNet() {
+      for (let i = 0; i <= canvas.height; i += 20) {
+        drawRect(canvas.width / 2 - 1, i, 2, 10, "white");
+      }
+    }
+
+    // Render
+    function render() {
+      drawRect(0, 0, canvas.width, canvas.height, "#000");
+
+      drawNet();
+
+      drawText(user.score, canvas.width / 4, 50, "lime");
+      drawText(computer.score, 3 * canvas.width / 4, 50, "red");
+
+      drawRect(user.x, user.y, user.width, user.height, user.color);
+      drawRect(computer.x, computer.y, computer.width, computer.height, computer.color);
+
+      drawCircle(ball.x, ball.y, ball.radius, ball.color);
+    }
+
+    // Control user paddle
+    canvas.addEventListener("mousemove", evt => {
+      let rect = canvas.getBoundingClientRect();
+      user.y = evt.clientY - rect.top - user.height / 2;
+    });
+
+    // Collision detection
+    function collision(b, p) {
+      return (
+        b.x - b.radius < p.x + p.width &&
+        b.x + b.radius > p.x &&
+        b.y - b.radius < p.y + p.height &&
+        b.y + b.radius > p.y
+      );
+    }
+
+    // Update game
+    function update() {
+      ball.x += ball.dx;
+      ball.y += ball.dy;
+
+      // Computer AI
+      computer.y += (ball.y - (computer.y + computer.height / 2)) * aiLevel;
+
+      if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+        ball.dy = -ball.dy;
+      }
+
+      let player = ball.x < canvas.width / 2 ? user : computer;
+
+      if (collision(ball, player)) {
+        let collidePoint = ball.y - (player.y + player.height / 2);
+        collidePoint = collidePoint / (player.height / 2);
+
+        let angleRad = (Math.PI / 4) * collidePoint;
+        let direction = ball.x < canvas.width / 2 ? 1 : -1;
+
+        ball.dx = direction * ball.speed * Math.cos(angleRad);
+        ball.dy = ball.speed * Math.sin(angleRad);
+
+        ball.speed += 0.5;
+      }
+
+      if (ball.x - ball.radius < 0) {
+        computer.score++;
+        resetBall();
+      } else if (ball.x + ball.radius > canvas.width) {
+        user.score++;
+        resetBall();
+      }
+    }
+
+    // Game loop
+    function gameLoop() {
+      update();
+      render();
+    }
+
+    function startGame() {
+      aiLevel = parseFloat(difficultySelect.value);
+      overlay.style.display = "none";
+      canvas.style.display = "block";
+      user.score = 0;
+      computer.score = 0;
+      resetBall();
+      clearInterval(gameInterval);
+      gameInterval = setInterval(gameLoop, 1000 / 60);
+    }
+  </script>
+</body>
+</html>
