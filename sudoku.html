@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku Game</title>
+    <style>
+        /* * --- CSS Styling --- */
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .game-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            width: 450px; /* 9 * 50px */
+            height: 450px;
+            border: 4px solid #333;
+            margin-bottom: 20px;
+        }
+
+        .cell {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            border: 1px solid #bbb;
+            box-sizing: border-box;
+            cursor: pointer;
+            color: #444;
+            transition: background-color 0.1s;
+        }
+
+        /* Styling for the 3x3 blocks */
+        .cell:nth-child(3n) {
+            border-right-width: 3px;
+            border-right-color: #333;
+        }
+        .cell:nth-child(9n) {
+            border-right-width: 1px; /* The very last cell */
+        }
+        .cell:nth-child(27n) {
+            border-bottom-width: 3px;
+            border-bottom-color: #333;
+        }
+        
+        /* Fix the grid bottom border being too thin */
+        #grid > div:nth-child(73) ~ div {
+            border-bottom-width: 1px;
+        }
+
+        /* Highlight the initial/pre-filled numbers */
+        .fixed {
+            background-color: #f5f5f5;
+            color: #111;
+            cursor: default;
+            font-weight: bold;
+        }
+
+        /* Highlight the currently selected cell */
+        .selected {
+            background-color: #a0c4ff;
+        }
+
+        /* Highlight cells with the same number as the selected cell */
+        .highlight {
+            background-color: #e0f2f1;
+        }
+
+        /* Highlight cells in the same row, column, or 3x3 box as the selected cell */
+        .area-highlight {
+            background-color: #f0f0f5;
+        }
+        
+        /* Error state */
+        .error {
+            color: red;
+        }
+
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 15px;
+        }
+
+        .number-button, #new-game {
+            padding: 10px 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+            transition: background-color 0.1s;
+        }
+
+        .number-button:hover, #new-game:hover {
+            background-color: #e9e9e9;
+        }
+        
+        .number-button:active {
+            background-color: #ddd;
+        }
+
+        #message {
+            margin-top: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #444;
+            min-height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sudoku</h1>
+    <div class="game-container">
+        <div id="grid">
+            </div>
+
+        <div id="controls">
+            <button class="number-button" data-value="1">1</button>
+            <button class="number-button" data-value="2">2</button>
+            <button class="number-button" data-value="3">3</button>
+            <button class="number-button" data-value="4">4</button>
+            <button class="number-button" data-value="5">5</button>
+            <button class="number-button" data-value="6">6</button>
+            <button class="number-button" data-value="7">7</button>
+            <button class="number-button" data-value="8">8</button>
+            <button class="number-button" data-value="9">9</button>
+            <button class="number-button" data-value="0">Clear</button>
+        </div>
+
+        <div id="message">Select a cell and a number to begin!</div>
+        <button id="new-game" onclick="initGame()">New Game</button>
+    </div>
+
+    <script>
+        /* * --- JavaScript Logic --- */
+
+        // --- Game State ---
+        const GRID_SIZE = 9;
+        let board = []; // Stores the current user input (0 for empty)
+        let solution = []; // Stores the complete, correct solution
+        let fixedCells = []; // Stores the initial pre-filled numbers
+        let selectedCell = null; // Stores the currently active cell element
+
+        const gridElement = document.getElementById('grid');
+        const messageElement = document.getElementById('message');
+
+        // --- Sudoku Generation (A simplified, fixed puzzle) ---
+
+        // A known valid 9x9 Sudoku puzzle (Easy/Medium)
+        const initialPuzzle = [
+            [5, 3, 0, 0, 7, 0, 0, 0, 0],
+            [6, 0, 0, 1, 9, 5, 0, 0, 0],
+            [0, 9, 8, 0, 0, 0, 0, 6, 0],
+            [8, 0, 0, 0, 6, 0, 0, 0, 3],
+            [4, 0, 0, 8, 0, 3, 0, 0, 1],
+            [7, 0, 0, 0, 2, 0, 0, 0, 6],
+            [0, 6, 0, 0, 0, 0, 2, 8, 0],
+            [0, 0, 0, 4, 1, 9, 0, 0, 5],
+            [0, 0, 0, 0, 8, 0, 0, 7, 9]
+        ];
+
+        // The corresponding solution (pre-solved for validation)
+        const gameSolution = [
+            [5, 3, 4, 6, 7, 8, 9, 1, 2],
+            [6, 7, 2, 1, 9, 5, 3, 4, 8],
+            [1, 9, 8, 3, 4, 2, 5, 6, 7],
+            [8, 5, 9, 7, 6, 1, 4, 2, 3],
+            [4, 2, 6, 8, 5, 3, 7, 9, 1],
+            [7, 1, 3, 9, 2, 4, 8, 5, 6],
+            [9, 6, 1, 5, 3, 7, 2, 8, 4],
+            [2, 8, 7, 4, 1, 9, 6, 3, 5],
+            [3, 4, 5, 2, 8, 6, 1, 7, 9]
+        ];
+
+
+        // --- Initialization and Setup ---
+
+        /**
+         * Initializes the game board by setting up the HTML grid and game state.
+         */
+        function initGame() {
+            gridElement.innerHTML = '';
+            board = JSON.parse(JSON.stringify(initialPuzzle)); // Deep copy the puzzle
+            solution = gameSolution;
+            fixedCells = [];
+            selectedCell = null;
+            messageElement.textContent = "Select a cell and a number to begin!";
+
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    
+                    const value = board[r][c];
+
+                    if (value !== 0) {
+                        cell.textContent = value;
+                        cell.classList.add('fixed');
+                        fixedCells.push(cell);
+                    }
+                    
+                    cell.addEventListener('click', () => handleCellSelection(cell));
+                    gridElement.appendChild(cell);
+                }
+            }
+            clearHighlights();
+        }
+        
+        // Add listeners for the number buttons
+        document.querySelectorAll('.number-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const value = parseInt(button.dataset.value);
+                if (selectedCell) {
+                    handleNumberInput(value);
+                }
+            });
+        });
+
+        // Add keyboard input listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.key >= '1' && e.key <= '9' && selectedCell) {
+                handleNumberInput(parseInt(e.key));
+            } else if ((e.key === 'Delete' || e.key === 'Backspace' || e.key === '0') && selectedCell) {
+                 handleNumberInput(0); // Clear the cell
+            }
+        });
+
+        // --- Cell Handling ---
+        
+        /**
+         * Handles the click event for a cell to select it.
+         * @param {HTMLElement} cell - The clicked cell element.
+         */
+        function handleCellSelection(cell) {
+            // Cannot select a fixed cell
+            if (cell.classList.contains('fixed')) {
+                // Deselect if already selected
+                if (selectedCell === cell) {
+                    selectedCell = null;
+                    clearHighlights();
+                }
+                return; 
+            }
+
+            // Remove selection from previous cell
+            if (selectedCell) {
+                selectedCell.classList.remove('selected');
+            }
+
+            // Set new selected cell
+            selectedCell = cell;
+            selectedCell.classList.add('selected');
+            
+            // Re-apply highlighting for the new cell
+            updateHighlights();
+        }
+
+        /**
+         * Handles input of a number (1-9) or clear (0) into the selected cell.
+         * @param {number} value - The number to place (1-9) or 0 to clear.
+         */
+        function handleNumberInput(value) {
+            if (!selectedCell || selectedCell.classList.contains('fixed')) {
+                messageElement.textContent = "You can't change a starting number.";
+                return;
+            }
+
+            const r = parseInt(selectedCell.dataset.row);
+            const c = parseInt(selectedCell.dataset.col);
+
+            // Update the display and the game board array
+            if (value === 0) {
+                selectedCell.textContent = '';
+                board[r][c] = 0;
+            } else {
+                selectedCell.textContent = value;
+                board[r][c] = value;
+            }
+
+            // Check for correctness and update highlights
+            updateHighlights();
+            checkWinCondition();
+        }
+
+        // --- Visual Helpers ---
+
+        /**
+         * Clears all highlighting (selected, area, highlight, error) from the grid.
+         */
+        function clearHighlights() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('selected', 'highlight', 'area-highlight', 'error');
+            });
+        }
+        
+        /**
+         * Re-applies all highlighting and error checking based on the selected cell.
+         */
+        function updateHighlights() {
+            clearHighlights();
+            if (!selectedCell) return;
+
+            const sr = parseInt(selectedCell.dataset.row);
+            const sc = parseInt(selectedCell.dataset.col);
+            const selectedValue = board[sr][sc];
+
+            selectedCell.classList.add('selected');
+            
+            // Iterate through the grid to apply all highlighting/error checks
+            document.querySelectorAll('.cell').forEach(cell => {
+                const r = parseInt(cell.dataset.row);
+                const c = parseInt(cell.dataset.col);
+
+                // Highlight the row, column, and 3x3 box (Area Highlight)
+                if (r === sr || c === sc || getBoxIndex(r, c) === getBoxIndex(sr, sc)) {
+                    if (cell !== selectedCell) {
+                        cell.classList.add('area-highlight');
+                    }
+                }
+
+                // Highlight cells with the same number
+                if (selectedValue !== 0 && board[r][c] === selectedValue) {
+                    cell.classList.add('highlight');
+                }
+
+                // Check for errors (only for filled-in cells)
+                if (board[r][c] !== 0) {
+                    if (board[r][c] !== solution[r][c]) {
+                        cell.classList.add('error');
+                    } else {
+                        cell.classList.remove('error'); // Ensure correct cells don't show error
+                    }
+                }
+            });
+        }
+
+        /**
+         * Calculates the 3x3 box index (0 to 8) for a given row and column.
+         */
+        function getBoxIndex(r, c) {
+            return Math.floor(r / 3) * 3 + Math.floor(c / 3);
+        }
+
+        // --- Win Condition ---
+
+        /**
+         * Checks if the current board matches the solution.
+         */
+        function checkWinCondition() {
+            let isSolved = true;
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    // Check if the cell is empty or incorrect
+                    if (board[r][c] === 0 || board[r][c] !== solution[r][c]) {
+                        isSolved = false;
+                        break;
+                    }
+                }
+                if (!isSolved) break;
+            }
+
+            if (isSolved) {
+                messageElement.textContent = "Congratulations! You solved the puzzle! 🎉";
+                // Optionally disable input after winning
+                selectedCell = null;
+            } else {
+                messageElement.textContent = "Keep going! Check for errors (red numbers).";
+            }
+        }
+
+        // Start the game when the page loads
+        initGame();
+    </script>
+</body>
+</html>
