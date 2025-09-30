@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Breakout with Power-ups</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(180deg,#0b0b0f,#121217);
+      color: #eaeaea;
+      font-family: system-ui, sans-serif;
+    }
+    canvas {
+      border-radius: 8px;
+      background: black;
+      box-shadow: 0 0 20px rgba(0,255,136,0.4);
+    }
+    #ui {
+      position: absolute;
+      text-align: center;
+      width: 440px;
+      max-width: calc(100vw - 40px);
+    }
+    #panel {
+      background: rgba(255,255,255,0.05);
+      padding: 16px;
+      border-radius: 10px;
+      backdrop-filter: blur(6px);
+    }
+    h1 { margin: 6px 0 8px; color: #00ff88 }
+    p { margin: 8px 0; font-size: 14px }
+    ul { text-align: left; font-size: 13px; margin: 10px auto; width: fit-content }
+    li { margin: 4px 0 }
+    .controls { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:8px }
+    label { font-size:13px; display:flex; gap:6px; align-items:center }
+    select, input[type="color"] { padding:4px; border-radius:6px; border:none; background:rgba(255,255,255,0.1); color:inherit }
+    button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      background: #00ff88;
+      color: #04220f;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #topbar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      display: flex;
+      gap: 16px;
+    }
+    #topbar > div {
+      background: rgba(255,255,255,0.08);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="topbar">
+    <div id="scoreDisplay">Score: 0</div>
+    <div id="livesDisplay">Lives: 3</div>
+  </div>
+
+  <canvas id="game" width="840" height="600"></canvas>
+
+  <div id="ui">
+    <div id="panel">
+      <h1>Breakout ✦</h1>
+      <p>Instructions:</p>
+      <ul>
+        <li>Move paddle with <b>Mouse</b> or <b>Arrow Keys</b></li>
+        <li>Press <b>Spacebar</b> to launch the ball</li>
+        <li>Break all bricks to win</li>
+        <li>Don’t let the ball fall below the paddle</li>
+        <li>Catch <b>Power-ups</b> for bonuses!</li>
+      </ul>
+
+      <div class="controls">
+        <label>Difficulty
+          <select id="difficulty">
+            <option value="easy">Easy</option>
+            <option value="normal" selected>Normal</option>
+            <option value="hard">Hard</option>
+            <option value="insane">Insane</option>
+          </select>
+        </label>
+        <label>Paddle Color
+          <input type="color" id="paddleColor" value="#00ff88">
+        </label>
+        <label>Ball Color
+          <input type="color" id="ballColor" value="#ffffff">
+        </label>
+      </div>
+
+      <button id="startBtn">Start Game</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const ui = document.getElementById("ui");
+    const startBtn = document.getElementById("startBtn");
+    const difficultySelect = document.getElementById("difficulty");
+    const paddleColorInput = document.getElementById("paddleColor");
+    const ballColorInput = document.getElementById("ballColor");
+    const scoreDisplay = document.getElementById("scoreDisplay");
+    const livesDisplay = document.getElementById("livesDisplay");
+
+    let cw = canvas.width, ch = canvas.height;
+    let paddle, ball, bricks, powerups;
+    let score = 0, lives = 3;
+    let running = false, animationId;
+
+    const difficultySettings = {
+      easy: { ballSpeed: 3, lives: 5 },
+      normal: { ballSpeed: 4, lives: 3 },
+      hard: { ballSpeed: 5, lives: 2 },
+      insane: { ballSpeed: 6, lives: 1 }
+    };
+
+    function init() {
+      const setting = difficultySettings[difficultySelect.value];
+      paddle = { w: 120, h: 14, x: cw/2-60, y: ch-40, color: paddleColorInput.value };
+      ball = { r: 9, x: cw/2, y: paddle.y-9, vx: 0, vy: 0, speed: setting.ballSpeed, color: ballColorInput.value, stuck: true };
+      bricks = [];
+      powerups = [];
+      const rows = 5, cols = 10, bw = 70, bh = 20, pad = 6, offTop = 60, offLeft = 30;
+      for (let r=0;r<rows;r++) {
+        bricks[r] = [];
+        for (let c=0;c<cols;c++) {
+          bricks[r][c] = { x: offLeft+c*(bw+pad), y: offTop+r*(bh+pad), w:bw, h:bh, alive:true };
+        }
+      }
+      score = 0; lives = setting.lives;
+      updateHUD();
+    }
+
+    function updateHUD() {
+      scoreDisplay.textContent = `Score: ${score}`;
+      livesDisplay.textContent = `Lives: ${lives}`;
+    }
+
+    function draw() {
+      ctx.clearRect(0,0,cw,ch);
+      ctx.fillStyle = paddle.color; ctx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);
+      ctx.fillStyle = ball.color; ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill();
+      bricks.flat().forEach(b => { if(b.alive){ ctx.fillStyle="cyan"; ctx.fillRect(b.x,b.y,b.w,b.h);} });
+      powerups.forEach(p => { ctx.fillStyle=p.color; ctx.fillRect(p.x,p.y,p.size,p.size); });
+    }
+
+    function launchBall() {
+      if (!ball.stuck) return;
+      ball.vx = (Math.random()>0.5?1:-1)*ball.speed;
+      ball.vy = -ball.speed;
+      ball.stuck = false;
+    }
+
+    function step() {
+      if (!running) return;
+      ball.x += ball.vx; ball.y += ball.vy;
+      // bounce walls
+      if (ball.x<ball.r || ball.x>cw-ball.r) ball.vx*=-1;
+      if (ball.y<ball.r) ball.vy*=-1;
+      // paddle
+      if (ball.y+ball.r>=paddle.y && ball.x>=paddle.x && ball.x<=paddle.x+paddle.w) {
+        ball.vy=-Math.abs(ball.vy);
+      }
+      // bricks
+      bricks.flat().forEach(b=>{
+        if(b.alive && ball.x> b.x && ball.x<b.x+b.w && ball.y> b.y && ball.y<b.y+b.h){
+          b.alive=false; ball.vy*=-1; score+=10;
+          if(Math.random()<0.2) spawnPowerup(b.x+b.w/2,b.y+b.h/2);
+        }
+      });
+      // powerups
+      powerups.forEach((p,i)=>{
+        p.y+=2;
+        if(p.y+p.size>=paddle.y && p.x>paddle.x && p.x<paddle.x+paddle.w){
+          applyPowerup(p.type); powerups.splice(i,1);
+        }
+      });
+      // lose ball
+      if (ball.y>ch){ lives--; resetBall(); }
+      draw();
+      updateHUD();
+      if(lives<=0) { endGame("Game Over!"); return; }
+      if(bricks.flat().every(b=>!b.alive)) { endGame("You Win!"); return; }
+      animationId=requestAnimationFrame(step);
+    }
+
+    function resetBall() {
+      ball.x=cw/2; ball.y=paddle.y-10; ball.vx=0; ball.vy=0; ball.stuck=true;
+    }
+
+    function endGame(msg) {
+      running=false; cancelAnimationFrame(animationId); ui.style.display="block"; alert(msg);
+    }
+
+    function spawnPowerup(x,y){
+      const types=["expand","shrink","multiball","slow","life"];
+      const type=types[Math.floor(Math.random()*types.length)];
+      powerups.push({x,y,size:16,type,color:"yellow"});
+    }
+
+    function applyPowerup(type){
+      if(type==="expand") paddle.w+=40;
+      if(type==="shrink") paddle.w=Math.max(40,paddle.w-30);
+      if(type==="multiball") ball.vy*=-1; // simple effect
+      if(type==="slow") { ball.vx*=0.7; ball.vy*=0.7; }
+      if(type==="life") lives++;
+    }
+
+    document.addEventListener("keydown",e=>{
+      if(e.key==="ArrowLeft") paddle.x-=20;
+      if(e.key==="ArrowRight") paddle.x+=20;
+      if(e.key===" ") launchBall();
+    });
+    canvas.addEventListener("mousemove",e=>{
+      const rect=canvas.getBoundingClientRect();
+      paddle.x=e.clientX-rect.left-paddle.w/2;
+    });
+
+    startBtn.onclick=()=>{
+      init(); ui.style.display="none"; running=true; animationId=requestAnimationFrame(step);
+    };
+
+    init(); draw();
+  </script>
+</body>
+</html>
