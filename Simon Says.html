@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Simon Says</title>
+  <style>
+    body {
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+    #game {
+      display: grid;
+      grid-template-columns: repeat(2, 150px);
+      grid-template-rows: repeat(2, 150px);
+      gap: 10px;
+    }
+    .btn {
+      width: 150px;
+      height: 150px;
+      border-radius: 12px;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:active {
+      transform: scale(0.95);
+    }
+    .red { background: #e74c3c; }
+    .green { background: #27ae60; }
+    .blue { background: #3498db; }
+    .yellow { background: #f1c40f; }
+    #info {
+      position: absolute;
+      top: 20px;
+      text-align: center;
+      width: 100%;
+    }
+    button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      background: #00ff88;
+      color: #04220f;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <h1>Simon Says</h1>
+    <p id="status">Press Start to Play</p>
+    <button id="startBtn">Start</button>
+  </div>
+  <div id="game">
+    <div class="btn red" data-color="red"></div>
+    <div class="btn green" data-color="green"></div>
+    <div class="btn blue" data-color="blue"></div>
+    <div class="btn yellow" data-color="yellow"></div>
+  </div>
+
+  <script>
+    const colors = ["red", "green", "blue", "yellow"];
+    const buttons = document.querySelectorAll(".btn");
+    const statusText = document.getElementById("status");
+    const startBtn = document.getElementById("startBtn");
+
+    let sequence = [];
+    let playerSequence = [];
+    let round = 0;
+    let locked = true;
+
+    // Play sound for each color
+    function playSound(color) {
+      const freq = { red: 330, green: 440, blue: 550, yellow: 660 }[color];
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+      osc.stop(ctx.currentTime + 0.5);
+    }
+
+    // Flash a button
+    function flash(color) {
+      const btn = document.querySelector(`.${color}`);
+      playSound(color);
+      btn.style.opacity = 1;
+      setTimeout(() => btn.style.opacity = 0.8, 400);
+    }
+
+    // Show full sequence
+    function showSequence() {
+      locked = true;
+      let i = 0;
+      const interval = setInterval(() => {
+        flash(sequence[i]);
+        i++;
+        if (i >= sequence.length) {
+          clearInterval(interval);
+          locked = false;
+        }
+      }, 700);
+    }
+
+    // Start game
+    function startGame() {
+      sequence = [];
+      round = 0;
+      statusText.textContent = "Watch the sequence!";
+      nextRound();
+    }
+
+    // Next round
+    function nextRound() {
+      playerSequence = [];
+      round++;
+      statusText.textContent = `Round ${round}`;
+      sequence.push(colors[Math.floor(Math.random() * 4)]);
+      setTimeout(showSequence, 1000);
+    }
+
+    // Handle player click
+    function handleClick(e) {
+      if (locked) return;
+      const color = e.target.dataset.color;
+      playerSequence.push(color);
+      flash(color);
+
+      const index = playerSequence.length - 1;
+      if (playerSequence[index] !== sequence[index]) {
+        statusText.textContent = "Wrong! Game Over.";
+        locked = true;
+        return;
+      }
+
+      if (playerSequence.length === sequence.length) {
+        statusText.textContent = "Good! Get ready...";
+        setTimeout(nextRound, 1000);
+      }
+    }
+
+    buttons.forEach(btn => btn.addEventListener("click", handleClick));
+    startBtn.addEventListener("click", startGame);
+  </script>
+</body>
+</html>
