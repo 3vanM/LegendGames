@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Arcade Fighter</title>
+    <style>
+        /* * --- CSS Styling --- */
+        body {
+            font-family: 'Arial Black', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #2c3e50; /* Dark background */
+            color: #ecf0f1;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #f1c40f;
+            text-shadow: 2px 2px #c0392b;
+            margin-bottom: 20px;
+        }
+
+        .game-container {
+            width: 800px;
+            height: 400px;
+            background-color: #34495e;
+            border: 5px solid #bdc3c7;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        /* --- UI/Scoreboard --- */
+        #ui {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 10;
+        }
+
+        .health-bar-container {
+            width: 300px;
+            background-color: #7f8c8d;
+            border: 2px solid #2c3e50;
+            height: 25px;
+        }
+
+        .health-bar {
+            height: 100%;
+            width: 100%; /* Initial width */
+            background-color: #e74c3c;
+            transition: width 0.3s ease-out;
+        }
+
+        #p1-health-bar {
+            transform-origin: right; /* Player 1 bar fills from right to left */
+        }
+        #p2-health-bar {
+            transform-origin: left; /* Player 2 bar fills from left to right */
+        }
+
+        #timer {
+            font-size: 2em;
+            color: #f1c40f;
+        }
+
+        /* --- Character Display --- */
+        #stage {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 350px;
+        }
+        
+        .fighter {
+            position: absolute;
+            bottom: 0;
+            width: 100px;
+            height: 150px;
+            font-size: 1.5em;
+            text-align: center;
+            line-height: 150px;
+            color: white;
+            transition: transform 0.1s; /* For movement/attack animations */
+        }
+
+        #player-1 {
+            left: 100px;
+            background: #2980b9; /* Player color */
+            border: 3px solid #3498db;
+            transform: scaleX(1); /* Facing right */
+        }
+
+        #player-2 {
+            right: 100px;
+            background: #c0392b; /* Enemy color */
+            border: 3px solid #e74c3c;
+            transform: scaleX(-1); /* Flip horizontally to face player */
+        }
+        
+        /* --- Attack Animations (using transform) --- */
+        .punch {
+            background-color: #f39c12;
+            transform: translate(50px) scaleX(1); /* Player 1 punch: move forward */
+        }
+        #player-2.punch {
+            transform: scaleX(-1) translate(50px); /* Player 2 punch: move forward (and keep flipped) */
+        }
+        .hurt {
+            background-color: #7f8c8d !important;
+            opacity: 0.5;
+        }
+
+        /* --- Message/Ending Screen --- */
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 5px solid #f1c40f;
+            font-size: 3em;
+            font-weight: bold;
+            color: white;
+            z-index: 20;
+            display: none;
+        }
+
+        #controls-info {
+            margin-top: 20px;
+            font-size: 1.1em;
+            color: #bdc3c7;
+        }
+        #controls-info strong { color: #f1c40f; }
+    </style>
+</head>
+<body>
+    <h1>SIMPLE ARCADE FIGHTER</h1>
+    <div class="game-container">
+        <div id="ui">
+            <div class="health-bar-container">
+                <div id="p1-health-bar" class="health-bar"></div>
+            </div>
+            <div id="timer">60</div>
+            <div class="health-bar-container">
+                <div id="p2-health-bar" class="health-bar"></div>
+            </div>
+        </div>
+
+        <div id="stage">
+            <div id="player-1" class="fighter">P1</div>
+            <div id="player-2" class="fighter">CPU</div>
+        </div>
+
+        <div id="message">FIGHT!</div>
+    </div>
+    <div id="controls-info">
+        CONTROLS: **A** (Punch), **S** (Kick - same effect for simplicity)
+        | Press **R** to restart
+    </div>
+
+    <script>
+        /* * --- JavaScript Logic --- */
+
+        // --- Game Configuration ---
+        const MAX_HEALTH = 100;
+        const PUNCH_DAMAGE = 10;
+        const KICK_DAMAGE = 15;
+        const ATTACK_DELAY = 150; // Milliseconds for attack animation
+        const GAME_TIME = 60; // Seconds
+
+        // --- Game State ---
+        let p1Health = MAX_HEALTH;
+        let p2Health = MAX_HEALTH;
+        let isGameOver = false;
+        let isAttacking = false;
+        let timeLeft = GAME_TIME;
+        let timerInterval;
+
+        // --- DOM Elements ---
+        const p1Element = document.getElementById('player-1');
+        const p2Element = document.getElementById('player-2');
+        const p1HealthBar = document.getElementById('p1-health-bar');
+        const p2HealthBar = document.getElementById('p2-health-bar');
+        const timerElement = document.getElementById('timer');
+        const messageElement = document.getElementById('message');
+
+        // --- Initialization ---
+
+        /**
+         * Resets the game state and starts the match.
+         */
+        function initGame() {
+            // Reset state
+            p1Health = MAX_HEALTH;
+            p2Health = MAX_HEALTH;
+            isGameOver = false;
+            isAttacking = false;
+            timeLeft = GAME_TIME;
+
+            // Reset UI
+            updateHealthBars();
+            timerElement.textContent = timeLeft;
+            messageElement.style.display = 'block';
+            messageElement.textContent = 'FIGHT!';
+            setTimeout(() => { messageElement.style.display = 'none'; }, 1500);
+            p1Element.classList.remove('hurt');
+            p2Element.classList.remove('hurt');
+
+            // Clear any old timer and start a new one
+            clearInterval(timerInterval);
+            timerInterval = setInterval(gameLoop, 1000);
+
+            // Start simple CPU logic
+            setTimeout(cpuAttackLoop, 2000);
+        }
+
+        // --- Core Game Loop (Timer) ---
+        function gameLoop() {
+            if (isGameOver) {
+                clearInterval(timerInterval);
+                return;
+            }
+
+            timeLeft--;
+            timerElement.textContent = timeLeft;
+
+            if (timeLeft <= 0) {
+                isGameOver = true;
+                handleGameEnd(p1Health === p2Health ? 'DRAW' : (p1Health > p2Health ? 'P1 WINS' : 'CPU WINS'));
+            }
+        }
+
+        // --- Player Input/Controls ---
+        document.addEventListener('keydown', (e) => {
+            if (isGameOver) {
+                if (e.key.toUpperCase() === 'R') {
+                    initGame(); // Restart
+                }
+                return;
+            }
+            
+            // Prevent spamming and simultaneous actions
+            if (isAttacking) return;
+
+            const key = e.key.toUpperCase();
+            let damage = 0;
+            let action = '';
+
+            if (key === 'A') { // Punch
+                damage = PUNCH_DAMAGE;
+                action = 'punch';
+            } else if (key === 'S') { // Kick (using same animation for simplicity)
+                damage = KICK_DAMAGE;
+                action = 'punch'; 
+            }
+
+            if (damage > 0) {
+                isAttacking = true;
+                performAttack(p1Element, p2Element, damage, action);
+                
+                // Reset attack state after animation
+                setTimeout(() => {
+                    isAttacking = false;
+                }, ATTACK_DELAY);
+            }
+        });
+
+        // --- CPU AI (Basic Randomized Attack Loop) ---
+        function cpuAttackLoop() {
+            if (isGameOver) return;
+
+            // Decide to attack 
+            if (Math.random() < 0.6) { // 60% chance to attack
+                const damage = Math.random() < 0.7 ? PUNCH_DAMAGE : KICK_DAMAGE; // 70% punch, 30% kick
+                performAttack(p2Element, p1Element, damage, 'punch');
+            }
+            
+            // Schedule the next CPU action
+            const nextAttackTime = 1000 + Math.random() * 1500; // Attack every 1s to 2.5s
+            setTimeout(cpuAttackLoop, nextAttackTime);
+        }
+
+        // --- Attack Execution ---
+
+        /**
+         * Executes an attack from one fighter to the other.
+         */
+        function performAttack(attacker, target, damage, action) {
+            // 1. Apply visual attack animation
+            attacker.classList.add(action);
+
+            // 2. Reduce target health and apply hurt animation
+            if (attacker === p1Element) {
+                p2Health -= damage;
+                p2Health = Math.max(0, p2Health);
+            } else {
+                p1Health -= damage;
+                p1Health = Math.max(0, p1Health);
+            }
+            
+            target.classList.add('hurt');
+            updateHealthBars();
+
+            // 3. Clean up animations after the delay
+            setTimeout(() => {
+                attacker.classList.remove(action);
+                target.classList.remove('hurt');
+            }, ATTACK_DELAY);
+
+            // 4. Check for knockout
+            if (p1Health <= 0) {
+                handleGameEnd('CPU WINS');
+            } else if (p2Health <= 0) {
+                handleGameEnd('P1 WINS');
+            }
+        }
+
+        // --- UI Updates ---
+        
+        /**
+         * Updates the visual representation of the health bars.
+         */
+        function updateHealthBars() {
+            const p1Percent = (p1Health / MAX_HEALTH) * 100;
+            const p2Percent = (p2Health / MAX_HEALTH) * 100;
+            
+            p1HealthBar.style.width = `${p1Percent}%`;
+            p2HealthBar.style.width = `${p2Percent}%`;
+        }
+
+        // --- Game End Handler ---
+        
+        /**
+         * Displays the game over message and stops the game loop.
+         */
+        function handleGameEnd(result) {
+            isGameOver = true;
+            clearInterval(timerInterval);
+            messageElement.textContent = result;
+            messageElement.style.display = 'block';
+        }
+
+        // Start the game when the page loads
+        initGame();
+    </script>
+</body>
+</html>
