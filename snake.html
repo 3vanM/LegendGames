@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Snake Game</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #111, #222);
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      border: 3px solid #0f0;
+      background: #000;
+      box-shadow: 0 0 15px #0f0;
+    }
+    #overlay {
+      position: absolute;
+      text-align: center;
+      color: white;
+    }
+    h1 {
+      font-size: 40px;
+      margin-bottom: 10px;
+      color: lime;
+    }
+    p {
+      font-size: 16px;
+      margin: 5px 0;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background: limegreen;
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: green;
+    }
+    .options {
+      margin-top: 10px;
+      text-align: left;
+      display: inline-block;
+      font-size: 14px;
+    }
+    .options label {
+      display: block;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="400" height="400"></canvas>
+  <div id="overlay">
+    <h1>Snake 🐍</h1>
+    <p>Customize your game:</p>
+    <div class="options">
+      <label>Snake Color: <input type="color" id="snakeColor" value="#00ff00"></label>
+      <label>Food Color: <input type="color" id="foodColor" value="#ff0000"></label>
+      <label>Difficulty: 
+        <select id="speed">
+          <option value="150">Easy</option>
+          <option value="120" selected>Normal</option>
+          <option value="90">Hard</option>
+          <option value="60">Insane</option>
+        </select>
+      </label>
+    </div>
+    <button onclick="startGame()">Start Game</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
+
+    const box = 20; 
+    let snake, direction, food, score, game;
+    let snakeColor = "#00ff00";
+    let foodColor = "#ff0000";
+    let gameSpeed = 120;
+
+    function resetGame() {
+      snake = [{ x: 9 * box, y: 9 * box }];
+      direction = null;
+      score = 0;
+      food = {
+        x: Math.floor(Math.random() * (canvas.width / box)) * box,
+        y: Math.floor(Math.random() * (canvas.height / box)) * box
+      };
+    }
+
+    function startGame() {
+      // grab customization values
+      snakeColor = document.getElementById("snakeColor").value;
+      foodColor = document.getElementById("foodColor").value;
+      gameSpeed = parseInt(document.getElementById("speed").value);
+
+      overlay.style.display = "none";
+      resetGame();
+      game = setInterval(drawGame, gameSpeed);
+    }
+
+    function endGame() {
+      clearInterval(game);
+      overlay.innerHTML = `
+        <h1>Game Over</h1>
+        <p>Your Score: ${score}</p>
+        <button onclick="showMenu()">Play Again</button>
+      `;
+      overlay.style.display = "block";
+    }
+
+    function showMenu() {
+      overlay.innerHTML = `
+        <h1>Snake 🐍</h1>
+        <p>Customize your game:</p>
+        <div class="options">
+          <label>Snake Color: <input type="color" id="snakeColor" value="${snakeColor}"></label>
+          <label>Food Color: <input type="color" id="foodColor" value="${foodColor}"></label>
+          <label>Difficulty: 
+            <select id="speed">
+              <option value="150" ${gameSpeed === 150 ? "selected" : ""}>Easy</option>
+              <option value="120" ${gameSpeed === 120 ? "selected" : ""}>Normal</option>
+              <option value="90" ${gameSpeed === 90 ? "selected" : ""}>Hard</option>
+              <option value="60" ${gameSpeed === 60 ? "selected" : ""}>Insane</option>
+            </select>
+          </label>
+        </div>
+        <button onclick="startGame()">Start Game</button>
+      `;
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft" && direction !== "RIGHT") direction = "LEFT";
+      if (event.key === "ArrowUp" && direction !== "DOWN") direction = "UP";
+      if (event.key === "ArrowRight" && direction !== "LEFT") direction = "RIGHT";
+      if (event.key === "ArrowDown" && direction !== "UP") direction = "DOWN";
+    });
+
+    function drawGame() {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // draw food with glow
+      ctx.fillStyle = foodColor;
+      ctx.shadowColor = foodColor;
+      ctx.shadowBlur = 10;
+      ctx.fillRect(food.x, food.y, box, box);
+      ctx.shadowBlur = 0;
+
+      // draw snake
+      for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = i === 0 ? snakeColor : snakeColor + "cc"; // head solid, body semi-transparent
+        ctx.fillRect(snake[i].x, snake[i].y, box, box);
+      }
+
+      let snakeX = snake[0].x;
+      let snakeY = snake[0].y;
+
+      if (direction === "LEFT") snakeX -= box;
+      if (direction === "UP") snakeY -= box;
+      if (direction === "RIGHT") snakeX += box;
+      if (direction === "DOWN") snakeY += box;
+
+      if (snakeX === food.x && snakeY === food.y) {
+        score++;
+        food = {
+          x: Math.floor(Math.random() * (canvas.width / box)) * box,
+          y: Math.floor(Math.random() * (canvas.height / box)) * box
+        };
+      } else {
+        snake.pop();
+      }
+
+      const newHead = { x: snakeX, y: snakeY };
+
+      if (
+        snakeX < 0 || snakeY < 0 ||
+        snakeX >= canvas.width || snakeY >= canvas.height ||
+        snake.some((seg) => seg.x === newHead.x && seg.y === newHead.y)
+      ) {
+        return endGame();
+      }
+
+      snake.unshift(newHead);
+
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.fillText("Score: " + score, 10, 20);
+    }
+  </script>
+</body>
+</html>
