@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hangman Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    h1 { color: #00ff88; }
+    #wordDisplay {
+      font-size: 2em;
+      letter-spacing: 0.3em;
+      margin: 20px 0;
+    }
+    #wrongLetters {
+      margin: 10px 0;
+      color: #ff5555;
+    }
+    #status { margin: 10px 0; }
+    button {
+      margin-top: 15px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      background: #00ff88;
+      color: #04220f;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Hangman</h1>
+  <div id="wordDisplay">_ _ _ _ _</div>
+  <div>Wrong letters: <span id="wrongLetters"></span></div>
+  <div>Remaining attempts: <span id="attempts">6</span></div>
+  <div id="status"></div>
+  <button id="restartBtn">Restart Game</button>
+
+  <script>
+    const words = ["javascript", "hangman", "programming", "developer", "computer", "browser"];
+    let selectedWord = '';
+    let correctLetters = [];
+    let wrongLetters = [];
+    let attemptsLeft = 6;
+
+    const wordDisplay = document.getElementById("wordDisplay");
+    const wrongLettersEl = document.getElementById("wrongLetters");
+    const attemptsEl = document.getElementById("attempts");
+    const statusEl = document.getElementById("status");
+    const restartBtn = document.getElementById("restartBtn");
+
+    function pickWord() {
+      const index = Math.floor(Math.random() * words.length);
+      return words[index];
+    }
+
+    function updateWordDisplay() {
+      wordDisplay.textContent = selectedWord
+        .split('')
+        .map(letter => correctLetters.includes(letter) ? letter : "_")
+        .join(' ');
+    }
+
+    function updateWrongLetters() {
+      wrongLettersEl.textContent = wrongLetters.join(', ');
+      attemptsEl.textContent = attemptsLeft;
+    }
+
+    function checkWin() {
+      if(selectedWord.split('').every(l => correctLetters.includes(l))) {
+        statusEl.textContent = "🎉 You Won!";
+        locked = true;
+      } else if(attemptsLeft <= 0) {
+        statusEl.textContent = `💀 You Lost! Word was "${selectedWord}"`;
+        locked = true;
+      }
+    }
+
+    function resetGame() {
+      correctLetters = [];
+      wrongLetters = [];
+      attemptsLeft = 6;
+      selectedWord = pickWord();
+      locked = false;
+      statusEl.textContent = '';
+      updateWordDisplay();
+      updateWrongLetters();
+    }
+
+    let locked = false;
+
+    document.addEventListener("keydown", (e) => {
+      if(locked) return;
+      const letter = e.key.toLowerCase();
+      if(letter.match(/[a-z]/) && letter.length === 1) {
+        if(selectedWord.includes(letter)) {
+          if(!correctLetters.includes(letter)) {
+            correctLetters.push(letter);
+            updateWordDisplay();
+          }
+        } else {
+          if(!wrongLetters.includes(letter)) {
+            wrongLetters.push(letter);
+            attemptsLeft--;
+            updateWrongLetters();
+          }
+        }
+        checkWin();
+      }
+    });
+
+    restartBtn.addEventListener("click", resetGame);
+
+    // Initialize game
+    resetGame();
+  </script>
+</body>
+</html>
